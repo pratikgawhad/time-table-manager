@@ -1,0 +1,6 @@
+{
+  "name": "Time Table Manager",
+  "description": "Complete lecture timetable manager with exact alarms, full-screen white wake alert, 3-second vibration, and schedule management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
