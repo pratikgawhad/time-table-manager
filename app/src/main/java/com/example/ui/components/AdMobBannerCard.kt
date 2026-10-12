@@ -58,19 +58,19 @@ fun AdMobBannerCard(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(4.dp))
-                        .background(Color(0xFFFEF3C7))
+                        .background(if (AdMobConfig.useTestAds) Color(0xFFFEF3C7) else Color(0xFFEEF2FF))
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "Ad • Test AdMob",
+                        text = if (AdMobConfig.useTestAds) "Ad • Test" else "Ad • AdMob Banner",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFB45309)
+                        color = if (AdMobConfig.useTestAds) Color(0xFFB45309) else Color(0xFF6366F1)
                     )
                 }
 
                 Text(
-                    text = "ID: ...${AdMobConfig.BANNER_AD_UNIT_ID.takeLast(10)}",
+                    text = "ID: ...${AdMobConfig.activeBannerAdUnitId.takeLast(10)}",
                     fontSize = 10.sp,
                     color = Color(0xFF94A3B8)
                 )
@@ -78,7 +78,7 @@ fun AdMobBannerCard(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Banner Content Container
+            // Banner Content Container (Standard Banner Look)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -129,7 +129,7 @@ fun AdMobBannerCard(
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = "INSTALL",
+                        text = "VISIT",
                         color = Color.White,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold

@@ -5,7 +5,8 @@ import android.content.SharedPreferences
 
 class SettingsPreferences(context: Context) {
 
-    private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences =
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     var areAlarmsGloballyEnabled: Boolean
         get() = prefs.getBoolean(KEY_ALARMS_ENABLED, true)
@@ -27,15 +28,13 @@ class SettingsPreferences(context: Context) {
         get() = prefs.getString(KEY_THEME_MODE, "light") ?: "light"
         set(value) = prefs.edit().putString(KEY_THEME_MODE, value).apply()
 
+    var appLanguage: String
+        get() = prefs.getString(KEY_APP_LANGUAGE, "en") ?: "en"
+        set(value) = prefs.edit().putString(KEY_APP_LANGUAGE, value).apply()
+
     var saveCount: Int
         get() = prefs.getInt(KEY_SAVE_COUNT, 0)
         set(value) = prefs.edit().putInt(KEY_SAVE_COUNT, value).apply()
-
-    fun incrementAndCheckInterstitial(): Boolean {
-        val current = saveCount + 1
-        saveCount = current
-        return current % 3 == 0
-    }
 
     companion object {
         private const val PREFS_NAME = "timetable_prefs"
@@ -44,6 +43,7 @@ class SettingsPreferences(context: Context) {
         private const val KEY_SOUND_ENABLED = "key_sound_enabled"
         private const val KEY_HAS_SEEN_ONBOARDING = "key_has_seen_onboarding"
         private const val KEY_THEME_MODE = "key_theme_mode"
+        private const val KEY_APP_LANGUAGE = "key_app_language"
         private const val KEY_SAVE_COUNT = "key_save_count"
     }
 }

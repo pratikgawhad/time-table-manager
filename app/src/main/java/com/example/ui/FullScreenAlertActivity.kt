@@ -83,7 +83,7 @@ class FullScreenAlertActivity : ComponentActivity() {
 
         val prefs = (applicationContext as? TimeTableApplication)?.preferences
         if (prefs?.isVibrationEnabled != false) {
-            triggerThreeSecondVibration()
+            com.example.util.VibrationHelper.vibrate3Seconds(this)
         }
 
         // Auto-close after 3 seconds by default
@@ -143,6 +143,7 @@ class FullScreenAlertActivity : ComponentActivity() {
 
     private fun snoozeNow(minutes: Int) {
         handler.removeCallbacks(closeRunnable)
+        com.example.util.VibrationHelper.cancel(this)
         AlarmScheduler.scheduleSnooze(this, lectureId, subjectName, minutes)
         Toast.makeText(this, "Alarm snoozed for $minutes minutes", Toast.LENGTH_SHORT).show()
         if (!isFinishing) finish()
@@ -150,6 +151,7 @@ class FullScreenAlertActivity : ComponentActivity() {
 
     private fun dismissNow() {
         handler.removeCallbacks(closeRunnable)
+        com.example.util.VibrationHelper.cancel(this)
         if (!isFinishing) finish()
     }
 

@@ -4,7 +4,9 @@ import com.example.data.dao.LectureDao
 import com.example.data.model.Lecture
 import kotlinx.coroutines.flow.Flow
 
-class LectureRepository(private val lectureDao: LectureDao) {
+class LectureRepository(
+    private val lectureDao: LectureDao
+) {
 
     val allLectures: Flow<List<Lecture>> = lectureDao.getAllLectures()
 
@@ -24,7 +26,11 @@ class LectureRepository(private val lectureDao: LectureDao) {
 
     suspend fun updateLecture(lecture: Lecture) = lectureDao.updateLecture(lecture)
 
-    suspend fun deleteLecture(lecture: Lecture) = lectureDao.deleteLecture(lecture)
+    suspend fun deleteLecture(lecture: Lecture) {
+        lectureDao.deleteLecture(lecture)
+    }
 
-    suspend fun deleteLectureById(id: Long) = lectureDao.deleteLectureById(id)
+    suspend fun deleteLectureById(id: Long) {
+        lectureDao.deleteLectureById(id)
+    }
 }

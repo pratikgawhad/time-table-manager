@@ -5,16 +5,29 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -25,16 +38,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.Lecture
-import com.example.ui.components.AdMobInterstitialDialog
+import com.example.data.preferences.SettingsPreferences
+import com.example.ui.components.AdMobBannerCard
 import com.example.ui.dialogs.AddEditLectureDialog
 import com.example.ui.dialogs.PermissionsDialog
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.OnboardingScreen
+import com.example.ui.screens.PrivacyPolicyScreen
+import com.example.ui.screens.ScheduleScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.theme.TimeTableTheme
 import com.example.ui.viewmodel.TimetableViewModel
@@ -66,10 +83,15 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-enum class ScreenState {
-    ONBOARDING,
-    HOME,
+enum class MainTab {
+    TODAY,
+    SCHEDULE,
     SETTINGS
+}
+
+enum class ModalScreen {
+    NONE,
+    PRIVACY_POLICY
 }
 
 @Composable
@@ -77,19 +99,17 @@ fun MainAppNavHost(
     viewModel: TimetableViewModel,
     onThemeChanged: (String) -> Unit
 ) {
-    val prefs = viewModel.preferences
-    var currentScreen by remember {
-        mutableStateOf(
-            if (prefs.hasSeenOnboarding) ScreenState.HOME else ScreenState.ONBOARDING
-        )
-    }
+    val prefs: SettingsPreferences = viewModel.preferences
+    var hasSeenOnboarding by remember { mutableStateOf(prefs.hasSeenOnboarding) }
+    var currentTab by remember { mutableStateOf(MainTab.TODAY) }
+    var currentModal by remember { mutableStateOf(ModalScreen.NONE) }
 
-    var lectureToEdit by remember { mutableStateOf<Lecture?>(null) }
     var showAddEditDialog by remember { mutableStateOf(false) }
+    var lectureToEdit by remember { mutableStateOf<Lecture?>(null) }
     var lectureToDelete by remember { mutableStateOf<Lecture?>(null) }
     var showPermissionsDialog by remember { mutableStateOf(false) }
 
-    var hasNotificationPermission by remember { mutableStateOf(false) }
+    var hasNotificationPermission by remember { mutableStateOf(true) }
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -113,66 +133,170 @@ fun MainAppNavHost(
     }
 
     val lectures by viewModel.lectures.collectAsStateWithLifecycle()
+    val allLectures by viewModel.allLectures.collectAsStateWithLifecycle()
     val selectedDayFilter by viewModel.selectedDayFilter.collectAsStateWithLifecycle()
-    val showInterstitial by viewModel.showInterstitialAd.collectAsStateWithLifecycle()
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        when (currentScreen) {
-            ScreenState.ONBOARDING -> {
-                OnboardingScreen(
-                    onFinish = {
-                        prefs.hasSeenOnboarding = true
-                        currentScreen = ScreenState.HOME
+        if (!hasSeenOnboarding) {
+            OnboardingScreen(
+                onFinish = {
+                    prefs.hasSeenOnboarding = true
+                    hasSeenOnboarding = true
+                }
+            )
+        } else {
+            when (currentModal) {
+                ModalScreen.PRIVACY_POLICY -> {
+                    BackHandler { currentModal = ModalScreen.NONE }
+                    PrivacyPolicyScreen(
+                        onNavigateBack = { currentModal = ModalScreen.NONE }
+                    )
+                }
+
+                ModalScreen.NONE -> {
+                    if (currentTab != MainTab.TODAY) {
+                        BackHandler { currentTab = MainTab.TODAY }
                     }
-                )
-            }
 
-            ScreenState.HOME -> {
-                HomeScreen(
-                    lectures = lectures,
-                    selectedDayFilter = selectedDayFilter,
-                    onSelectDayFilter = { viewModel.setDayFilter(it) },
-                    onAddNewLecture = {
-                        lectureToEdit = null
-                        showAddEditDialog = true
-                    },
-                    onEditLecture = { lecture ->
-                        lectureToEdit = lecture
-                        showAddEditDialog = true
-                    },
-                    onDeleteLecture = { lecture ->
-                        lectureToDelete = lecture
-                    },
-                    onToggleLectureEnabled = { lecture, enabled ->
-                        viewModel.toggleLectureEnabled(lecture, enabled)
-                    },
-                    onTestAlert = { lecture ->
-                        viewModel.triggerTestAlert(lecture)
-                    },
-                    onOpenSettings = {
-                        currentScreen = ScreenState.SETTINGS
-                    },
-                    onOpenPermissions = {
-                        showPermissionsDialog = true
-                    },
-                    hasMissingPermissions = !hasNotificationPermission
-                )
-            }
+                    Scaffold(
+                        bottomBar = {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                AdMobBannerCard()
+                                NavigationBar(
+                                    containerColor = Color.White,
+                                    tonalElevation = 8.dp
+                                ) {
+                                    NavigationBarItem(
+                                        icon = { Icon(Icons.Default.Today, contentDescription = "Today") },
+                                        label = { Text("Today") },
+                                        selected = currentTab == MainTab.TODAY,
+                                        onClick = { currentTab = MainTab.TODAY },
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedIconColor = Color(0xFF6366F1),
+                                            selectedTextColor = Color(0xFF6366F1),
+                                            indicatorColor = Color(0xFFEEF2FF),
+                                            unselectedIconColor = Color(0xFF64748B),
+                                            unselectedTextColor = Color(0xFF64748B)
+                                        ),
+                                        modifier = Modifier.testTag("tab_today")
+                                    )
+                                    NavigationBarItem(
+                                        icon = { Icon(Icons.Default.CalendarMonth, contentDescription = "Schedule") },
+                                        label = { Text("Schedule") },
+                                        selected = currentTab == MainTab.SCHEDULE,
+                                        onClick = { currentTab = MainTab.SCHEDULE },
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedIconColor = Color(0xFF6366F1),
+                                            selectedTextColor = Color(0xFF6366F1),
+                                            indicatorColor = Color(0xFFEEF2FF),
+                                            unselectedIconColor = Color(0xFF64748B),
+                                            unselectedTextColor = Color(0xFF64748B)
+                                        ),
+                                        modifier = Modifier.testTag("tab_schedule")
+                                    )
+                                    NavigationBarItem(
+                                        icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
+                                        label = { Text("Settings") },
+                                        selected = currentTab == MainTab.SETTINGS,
+                                        onClick = { currentTab = MainTab.SETTINGS },
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedIconColor = Color(0xFF6366F1),
+                                            selectedTextColor = Color(0xFF6366F1),
+                                            indicatorColor = Color(0xFFEEF2FF),
+                                            unselectedIconColor = Color(0xFF64748B),
+                                            unselectedTextColor = Color(0xFF64748B)
+                                        ),
+                                        modifier = Modifier.testTag("tab_settings")
+                                    )
+                                }
+                            }
+                        }
+                    ) { paddingValues ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(paddingValues)
+                        ) {
+                            when (currentTab) {
+                                MainTab.TODAY -> {
+                                    HomeScreen(
+                                        lectures = lectures,
+                                        selectedDayFilter = selectedDayFilter,
+                                        onSelectDayFilter = { viewModel.setDayFilter(it) },
+                                        onAddNewLecture = {
+                                            lectureToEdit = null
+                                            showAddEditDialog = true
+                                        },
+                                        onEditLecture = { lecture ->
+                                            lectureToEdit = lecture
+                                            showAddEditDialog = true
+                                        },
+                                        onDeleteLecture = { lecture ->
+                                            lectureToDelete = lecture
+                                        },
+                                        onToggleLectureEnabled = { lecture, enabled ->
+                                            viewModel.toggleLectureEnabled(lecture, enabled)
+                                        },
+                                        onTestAlert = { lecture ->
+                                            viewModel.triggerTestAlert(lecture)
+                                        },
+                                        onOpenSettings = {
+                                            currentTab = MainTab.SETTINGS
+                                        },
+                                        onOpenPermissions = {
+                                            showPermissionsDialog = true
+                                        },
+                                        onLoadSampleData = {
+                                            viewModel.loadSampleData()
+                                        },
+                                        hasMissingPermissions = !hasNotificationPermission
+                                    )
+                                }
 
-            ScreenState.SETTINGS -> {
-                SettingsScreen(
-                    preferences = prefs,
-                    onTestAlert = {
-                        viewModel.triggerTestAlert(lectures.firstOrNull())
-                    },
-                    onNavigateBack = {
-                        currentScreen = ScreenState.HOME
-                    },
-                    onThemeChanged = onThemeChanged
-                )
+                                MainTab.SCHEDULE -> {
+                                    ScheduleScreen(
+                                        lectures = allLectures,
+                                        onEditLecture = { lecture ->
+                                            lectureToEdit = lecture
+                                            showAddEditDialog = true
+                                        },
+                                        onDeleteLecture = { lecture ->
+                                            lectureToDelete = lecture
+                                        },
+                                        onToggleLectureEnabled = { lecture, enabled ->
+                                            viewModel.toggleLectureEnabled(lecture, enabled)
+                                        },
+                                        onTestAlert = { lecture ->
+                                            viewModel.triggerTestAlert(lecture)
+                                        }
+                                    )
+                                }
+
+                                MainTab.SETTINGS -> {
+                                    SettingsScreen(
+                                        preferences = prefs,
+                                        onTestAlert = {
+                                            viewModel.triggerTestAlert(allLectures.firstOrNull())
+                                        },
+                                        onNavigateBack = {
+                                            currentTab = MainTab.TODAY
+                                        },
+                                        onLoadSampleData = {
+                                            viewModel.loadSampleData()
+                                        },
+                                        onOpenPrivacyPolicy = {
+                                            currentModal = ModalScreen.PRIVACY_POLICY
+                                        },
+                                        onThemeChanged = onThemeChanged
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -203,31 +327,24 @@ fun MainAppNavHost(
             )
         }
 
-        // Delete Confirmation Modal
+        // Delete Lecture Confirmation Dialog
         lectureToDelete?.let { lecture ->
             AlertDialog(
                 onDismissRequest = { lectureToDelete = null },
-                title = { Text("Delete Lecture?", fontWeight = FontWeight.Bold) },
-                text = {
-                    Text("Are you sure you want to delete '${lecture.subject}'? Its scheduled alarm will also be canceled.")
-                },
+                title = { Text("Delete Lecture") },
+                text = { Text("Are you sure you want to remove '${lecture.subject}' from your timetable?") },
                 confirmButton = {
                     TextButton(
                         onClick = {
                             viewModel.deleteLecture(lecture)
                             lectureToDelete = null
-                        },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                        modifier = Modifier.testTag("confirm_delete_button")
+                        }
                     ) {
-                        Text("Delete")
+                        Text("Delete", color = Color(0xFFEF4444))
                     }
                 },
                 dismissButton = {
-                    TextButton(
-                        onClick = { lectureToDelete = null },
-                        modifier = Modifier.testTag("cancel_delete_button")
-                    ) {
+                    TextButton(onClick = { lectureToDelete = null }) {
                         Text("Cancel")
                     }
                 }
@@ -244,13 +361,6 @@ fun MainAppNavHost(
                 },
                 hasNotificationPermission = hasNotificationPermission,
                 onDismiss = { showPermissionsDialog = false }
-            )
-        }
-
-        // Interstitial Ad Dialog
-        if (showInterstitial) {
-            AdMobInterstitialDialog(
-                onDismiss = { viewModel.dismissInterstitialAd() }
             )
         }
     }

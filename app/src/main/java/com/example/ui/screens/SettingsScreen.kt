@@ -1,6 +1,5 @@
 package com.example.ui.screens
 
-import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -19,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -28,10 +26,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Alarm
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Dataset
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Policy
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
@@ -41,8 +40,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -55,7 +52,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -70,6 +66,8 @@ fun SettingsScreen(
     preferences: SettingsPreferences,
     onTestAlert: () -> Unit,
     onNavigateBack: () -> Unit,
+    onLoadSampleData: () -> Unit = {},
+    onOpenPrivacyPolicy: () -> Unit = {},
     onThemeChanged: (String) -> Unit = {}
 ) {
     BackHandler { onNavigateBack() }
@@ -78,278 +76,349 @@ fun SettingsScreen(
     var alarmsEnabled by remember { mutableStateOf(preferences.areAlarmsGloballyEnabled) }
     var vibrationEnabled by remember { mutableStateOf(preferences.isVibrationEnabled) }
     var soundEnabled by remember { mutableStateOf(preferences.isSoundEnabled) }
-    var currentThemeMode by remember { mutableStateOf(preferences.themeMode) }
+    var currentTheme by remember { mutableStateOf(preferences.themeMode) }
 
-    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-    val hasExactAlarm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        alarmManager?.canScheduleExactAlarms() ?: true
-    } else {
-        true
-    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8FAFC))
+    ) {
+        // TOP APP BAR
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White)
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+                .shadow(2.dp, ambientColor = Color(0x0F000000))
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = onNavigateBack,
+                    modifier = Modifier.testTag("btn_back_settings")
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color(0xFF1E293B)
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Settings",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E293B)
+                )
+            }
+        }
 
-    Scaffold(
-        containerColor = Color(0xFFF8FAFC)
-    ) { paddingValues ->
+        // SETTINGS CONTENT
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
+                .padding(16.dp)
         ) {
-            // HEADER
-            Box(
+            // SECTION 1: ALARM & ALERT SETTINGS
+            GroupHeader(title = "ALERTS & SOUNDS")
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))
-                        )
-                    )
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 18.dp)
+                    .shadow(3.dp, RoundedCornerShape(20.dp), ambientColor = Color(0x11000000))
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = onNavigateBack,
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.2f))
-                            .testTag("settings_back_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
-                    }
+                Column(modifier = Modifier.padding(6.dp)) {
+                    SettingToggleRow(
+                        icon = Icons.Default.Alarm,
+                        iconBg = Color(0xFFEEF2FF),
+                        iconTint = Color(0xFF6366F1),
+                        title = "Enable Lecture Alarms",
+                        subtitle = "Trigger notifications and alerts at lecture time",
+                        checked = alarmsEnabled,
+                        onCheckedChange = {
+                            alarmsEnabled = it
+                            preferences.areAlarmsGloballyEnabled = it
+                        },
+                        tag = "toggle_alarms"
+                    )
 
-                    Spacer(modifier = Modifier.width(14.dp))
+                    SettingToggleRow(
+                        icon = Icons.Default.Vibration,
+                        iconBg = Color(0xFFFEF3C7),
+                        iconTint = Color(0xFFF59E0B),
+                        title = "3-Second Vibration",
+                        subtitle = "Vibrate phone for 3 seconds when lecture begins",
+                        checked = vibrationEnabled,
+                        onCheckedChange = {
+                            vibrationEnabled = it
+                            preferences.isVibrationEnabled = it
+                        },
+                        tag = "toggle_vibration"
+                    )
 
-                    Text(
-                        text = "App Settings",
-                        color = Color.White,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
+                    SettingToggleRow(
+                        icon = Icons.Default.VolumeUp,
+                        iconBg = Color(0xFFDCFCE7),
+                        iconTint = Color(0xFF10B981),
+                        title = "Alarm Sound",
+                        subtitle = "Play system alarm ringtone at schedule trigger",
+                        checked = soundEnabled,
+                        onCheckedChange = {
+                            soundEnabled = it
+                            preferences.isSoundEnabled = it
+                        },
+                        tag = "toggle_sound"
                     )
                 }
             }
 
-            Column(modifier = Modifier.padding(16.dp)) {
+            Spacer(modifier = Modifier.height(20.dp))
 
-                // SECTION 1: ALARMS & VIBRATION
-                GroupHeader(title = "ALARM & WAKE CONTROLS")
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    modifier = Modifier.fillMaxWidth().shadow(3.dp, RoundedCornerShape(20.dp), ambientColor = Color(0x11000000))
-                ) {
-                    Column(modifier = Modifier.padding(6.dp)) {
-                        SettingsRow(
-                            title = "Master Alarm Switch",
-                            subtitle = "Enable or disable all scheduled wake alarms",
-                            icon = Icons.Default.Alarm,
-                            iconTint = Color(0xFF6366F1),
-                            checked = alarmsEnabled,
-                            onCheckedChange = {
-                                alarmsEnabled = it
-                                preferences.areAlarmsGloballyEnabled = it
-                            },
-                            tag = "toggle_master_alarms"
-                        )
-
-                        SettingsRow(
-                            title = "Vibrate for 3 Seconds",
-                            subtitle = "Vibrate phone when full-screen alert opens",
-                            icon = Icons.Default.Vibration,
-                            iconTint = Color(0xFFF59E0B),
-                            checked = vibrationEnabled,
-                            onCheckedChange = {
-                                vibrationEnabled = it
-                                preferences.isVibrationEnabled = it
-                            },
-                            tag = "toggle_vibration"
-                        )
-
-                        SettingsRow(
-                            title = "Alarm Audio",
-                            subtitle = "Play system alert ringtone on lecture time",
-                            icon = Icons.Default.VolumeUp,
-                            iconTint = Color(0xFF10B981),
-                            checked = soundEnabled,
-                            onCheckedChange = {
-                                soundEnabled = it
-                                preferences.isSoundEnabled = it
-                            },
-                            tag = "toggle_sound"
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // FEATURE 5: THEME MODE SELECTION
-                GroupHeader(title = "APPEARANCE & DARK MODE")
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    modifier = Modifier.fillMaxWidth().shadow(3.dp, RoundedCornerShape(20.dp), ambientColor = Color(0x11000000))
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.DarkMode, contentDescription = null, tint = Color(0xFF8B5CF6))
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(text = "Theme Preference", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF1E293B))
-                        }
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        listOf("light" to "Light Mode (Default)", "dark" to "Dark Mode (Deep Slate)", "system" to "System Default").forEach { (mode, label) ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .clickable {
-                                        currentThemeMode = mode
-                                        preferences.themeMode = mode
-                                        onThemeChanged(mode)
-                                    }
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = currentThemeMode == mode,
-                                    onClick = {
-                                        currentThemeMode = mode
-                                        preferences.themeMode = mode
-                                        onThemeChanged(mode)
-                                    }
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(text = label, fontSize = 14.sp, color = Color(0xFF1E293B))
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // SECTION 3: TEST & PREVIEW
-                GroupHeader(title = "DIAGNOSTICS & PREVIEW")
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    modifier = Modifier.fillMaxWidth().shadow(3.dp, RoundedCornerShape(20.dp), ambientColor = Color(0x11000000))
-                ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier.size(36.dp).clip(CircleShape).background(Color(0xFFEEF2FF)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(imageVector = Icons.Default.NotificationsActive, contentDescription = null, tint = Color(0xFF6366F1), modifier = Modifier.size(20.dp))
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(text = "Test Full-Screen Wake Alert (3s)", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF1E293B))
-                                Text(text = "Includes Snooze 5m/10m & 3s vibration", fontSize = 12.sp, color = Color(0xFF64748B))
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        Button(
-                            onClick = onTestAlert,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1)),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth().height(46.dp).testTag("trigger_test_alert_button")
+            // SECTION 2: TEST ALERT ACTION
+            GroupHeader(title = "QUICK TEST")
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(3.dp, RoundedCornerShape(20.dp), ambientColor = Color(0x11000000))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFF3E8FF)),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text("Launch 3-Second Test Overlay", fontWeight = FontWeight.Bold)
+                            Icon(
+                                imageVector = Icons.Default.NotificationsActive,
+                                contentDescription = null,
+                                tint = Color(0xFF8B5CF6),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Test Full-Screen White Alert",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp,
+                                color = Color(0xFF1E293B)
+                            )
+                            Text(
+                                text = "Opens the pure white full-screen alert and 3-second vibration immediately",
+                                fontSize = 12.sp,
+                                color = Color(0xFF64748B)
+                            )
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Button(
+                        onClick = onTestAlert,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF6366F1),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(46.dp)
+                            .testTag("btn_trigger_test_alert")
+                    ) {
+                        Text(text = "Preview Alert & Vibration", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-                // SECTION 4: EXACT ALARMS
-                GroupHeader(title = "PERMISSIONS")
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    modifier = Modifier.fillMaxWidth().shadow(3.dp, RoundedCornerShape(20.dp), ambientColor = Color(0x11000000))
-                ) {
+            // SECTION 3: APPEARANCE
+            GroupHeader(title = "APPEARANCE")
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(3.dp, RoundedCornerShape(20.dp), ambientColor = Color(0x11000000))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Theme Mode",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                        color = Color(0xFF1E293B)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Light Mode
+                        ThemeSelectionChip(
+                            icon = Icons.Default.LightMode,
+                            label = "Light",
+                            isSelected = currentTheme == "light",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                currentTheme = "light"
+                                preferences.themeMode = "light"
+                                onThemeChanged("light")
+                            }
+                        )
+
+                        // Dark Mode
+                        ThemeSelectionChip(
+                            icon = Icons.Default.DarkMode,
+                            label = "Dark",
+                            isSelected = currentTheme == "dark",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                currentTheme = "dark"
+                                preferences.themeMode = "dark"
+                                onThemeChanged("dark")
+                            }
+                        )
+
+                        // System Mode
+                        ThemeSelectionChip(
+                            icon = Icons.Default.Alarm,
+                            label = "Auto",
+                            isSelected = currentTheme == "system",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                currentTheme = "system"
+                                preferences.themeMode = "system"
+                                onThemeChanged("system")
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // SECTION 4: SAMPLE DATA LOADER
+            GroupHeader(title = "SAMPLE DATA")
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(3.dp, RoundedCornerShape(20.dp), ambientColor = Color(0x11000000))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFEEF2FF)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Dataset, contentDescription = null, tint = Color(0xFF6366F1), modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "Load Sample Lectures", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = Color(0xFF1E293B))
+                            Text(text = "Populate example courses to explore schedule features", fontSize = 12.sp, color = Color(0xFF64748B))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedButton(
+                        onClick = onLoadSampleData,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .testTag("btn_load_sample_data")
+                    ) {
+                        Text(text = "Load Sample Data", fontWeight = FontWeight.Bold, color = Color(0xFF6366F1))
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // SECTION 5: POLICIES
+            GroupHeader(title = "POLICIES")
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(3.dp, RoundedCornerShape(20.dp), ambientColor = Color(0x11000000))
+            ) {
+                Column(modifier = Modifier.padding(6.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenPrivacyPolicy() }
+                            .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
-                                modifier = Modifier.size(36.dp).clip(CircleShape).background(Color(0xFFFEF3C7)),
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFF1F5F9)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = Color(0xFFD97706), modifier = Modifier.size(20.dp))
+                                Icon(Icons.Default.Policy, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.size(20.dp))
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text(text = "Exact Alarm Permission", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF1E293B))
-                                Text(
-                                    text = if (hasExactAlarm) "Active & Allowed" else "Tap Grant to enable exact alarms",
-                                    fontSize = 12.sp,
-                                    color = if (hasExactAlarm) Color(0xFF10B981) else Color(0xFFF59E0B)
-                                )
+                                Text(text = "Privacy Policy", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = Color(0xFF1E293B))
+                                Text(text = "Google Play Developer program compliance", fontSize = 12.sp, color = Color(0xFF64748B))
                             }
                         }
-
-                        if (!hasExactAlarm && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            OutlinedButton(
-                                onClick = {
-                                    val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-                                        data = Uri.parse("package:${context.packageName}")
-                                    }
-                                    context.startActivity(intent)
-                                },
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Text("Grant", fontSize = 12.sp)
-                            }
-                        } else {
-                            Icon(imageVector = Icons.Default.CheckCircle, contentDescription = "Active", tint = Color(0xFF10B981), modifier = Modifier.size(22.dp))
-                        }
+                        Text(text = "Read", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF6366F1))
                     }
                 }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // SECTION 5: ABOUT
-                GroupHeader(title = "ABOUT")
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    modifier = Modifier.fillMaxWidth().shadow(3.dp, RoundedCornerShape(20.dp), ambientColor = Color(0x11000000))
-                ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = "⏰", fontSize = 26.sp)
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(text = "Time Table Manager", fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Color(0xFF1E293B))
-                                Text(text = "Version 2.0.0 • 8-Feature Pro Edition", fontSize = 12.sp, color = Color(0xFF64748B))
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Text(
-                            text = "Includes Onboarding, Today/Tomorrow Schedule, Snooze, 12 Subject Icons, 8 Pastel Color Accents, Repeat Rules (Daily, Weekdays, Weekends, Custom), Dark Theme, and Home Widget.",
-                            fontSize = 13.sp,
-                            color = Color(0xFF64748B),
-                            lineHeight = 18.sp
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(40.dp))
             }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // SECTION 6: ABOUT
+            GroupHeader(title = "ABOUT")
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                modifier = Modifier.fillMaxWidth().shadow(3.dp, RoundedCornerShape(20.dp), ambientColor = Color(0x11000000))
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = "⏰", fontSize = 26.sp)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(text = "Time Table Manager", fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Color(0xFF1E293B))
+                            Text(text = "Version 2.1.0", fontSize = 12.sp, color = Color(0xFF64748B))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "Includes Timetable Management, Daily & Weekly Schedule, Repeat Rules, 3-Second Vibration, Full-Screen White Alerts, Snooze, Subject Icons & Color Accents, and Dark Theme.",
+                        fontSize = 13.sp,
+                        color = Color(0xFF64748B),
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
         }
     }
 }
@@ -360,18 +429,19 @@ private fun GroupHeader(title: String) {
         text = title,
         fontSize = 12.sp,
         fontWeight = FontWeight.Bold,
-        color = Color(0xFF6366F1),
+        color = Color(0xFF94A3B8),
         letterSpacing = 1.sp,
-        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+        modifier = Modifier.padding(start = 6.dp, bottom = 8.dp)
     )
 }
 
 @Composable
-private fun SettingsRow(
+private fun SettingToggleRow(
+    icon: ImageVector,
+    iconBg: Color,
+    iconTint: Color,
     title: String,
     subtitle: String,
-    icon: ImageVector,
-    iconTint: Color,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     tag: String
@@ -379,8 +449,7 @@ private fun SettingsRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 12.dp, vertical = 12.dp),
+            .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -389,17 +458,32 @@ private fun SettingsRow(
             modifier = Modifier.weight(1f)
         ) {
             Box(
-                modifier = Modifier.size(36.dp).clip(CircleShape).background(iconTint.copy(alpha = 0.12f)),
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(iconBg),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(imageVector = icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(20.dp)
+                )
             }
-
             Spacer(modifier = Modifier.width(12.dp))
-
             Column {
-                Text(text = title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1E293B))
-                Text(text = subtitle, fontSize = 12.sp, color = Color(0xFF64748B))
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 15.sp,
+                    color = Color(0xFF1E293B)
+                )
+                Text(
+                    text = subtitle,
+                    fontSize = 12.sp,
+                    color = Color(0xFF64748B)
+                )
             }
         }
 
@@ -410,10 +494,43 @@ private fun SettingsRow(
                 checkedThumbColor = Color.White,
                 checkedTrackColor = Color(0xFF6366F1),
                 uncheckedThumbColor = Color(0xFF94A3B8),
-                uncheckedTrackColor = Color(0xFFE2E8F0),
-                uncheckedBorderColor = Color.Transparent
+                uncheckedTrackColor = Color(0xFFE2E8F0)
             ),
             modifier = Modifier.testTag(tag)
         )
+    }
+}
+
+@Composable
+private fun ThemeSelectionChip(
+    icon: ImageVector,
+    label: String,
+    isSelected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isSelected) Color(0xFFEEF2FF) else Color(0xFFF8FAFC))
+            .clickable { onClick() }
+            .padding(vertical = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isSelected) Color(0xFF6366F1) else Color(0xFF64748B),
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = label,
+                fontSize = 13.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isSelected) Color(0xFF6366F1) else Color(0xFF64748B)
+            )
+        }
     }
 }

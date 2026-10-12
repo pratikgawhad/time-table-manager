@@ -79,6 +79,8 @@ class LectureAlarmReceiver : BroadcastReceiver() {
         }
 
         if (prefs.isVibrationEnabled) {
+            // Trigger device vibration directly via VibrationHelper for 3 seconds
+            com.example.util.VibrationHelper.vibrate3Seconds(context)
             notificationBuilder.setVibrate(longArrayOf(0, 1000, 500, 1500))
         }
 
